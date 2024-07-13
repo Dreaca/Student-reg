@@ -3,17 +3,27 @@ package org.example.studentreg.controllers;
 import jakarta.json.bind.Jsonb;
 import jakarta.json.bind.JsonbBuilder;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebInitParam;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.example.studentreg.dto.StudentDTO;
+import org.example.studentreg.persistence.implementation.DataProcess;
 import org.example.studentreg.util.UtilProcess;
 
 import java.io.IOException;
 import java.sql.*;
 
-@WebServlet(urlPatterns = "/student")
+@WebServlet(urlPatterns = "/student"
+/*,
+    initParams = {
+    @WebInitParam(name = "driver", value = "com.mysql.cj.jdbc.Driver"),
+    @WebInitParam(name = "dbURL", value = "jdbc:mysql://localhost:3306/studentregdb"),
+    @WebInitParam(name = "dbUsername", value = "root"),
+    @WebInitParam(name = "dbPassword", value = "Ijse@1234")
+}*/
+)
 public class StudentController extends HttpServlet {
     Connection connection;
     static String SAVE_STUDENT = "INSERT INTO student(id,name,city,level,email) VALUES (?,?,?,?,?)";
@@ -28,6 +38,11 @@ public class StudentController extends HttpServlet {
             var dbURL = getServletContext().getInitParameter("dbURL");
             var user = getServletContext().getInitParameter("dbUsername");
             var password = getServletContext().getInitParameter("dbPassword");
+            /*var driVerClass = getServletConfig().getInitParameter("driver");
+            var dbURL = getServletConfig().getInitParameter("dbURL");
+            var user = getServletConfig().getInitParameter("dbUsername");
+            var password = getServletConfig().getInitParameter("dbPassword");*/
+
             Class.forName(driVerClass);
             this.connection = DriverManager.getConnection(dbURL, user, password);
 
@@ -39,28 +54,19 @@ public class StudentController extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 
-        if(!req.getContentType().toLowerCase().startsWith("application/json")||req.getContentType() == null){
-            resp.sendError(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
-        }
         //Todo : get student
-        var studentDTO = new StudentDTO();
-        try(var writer = resp.getWriter()){
-            PreparedStatement pstm = connection.prepareStatement(GET_STUDENT);
-            String id = req.getParameter("id");
-            pstm.setString(1,id);
-            ResultSet resultSet = pstm.executeQuery();
-            while (resultSet.next()){
 
-                studentDTO.setId(resultSet.getString("id"));
-                studentDTO.setName(resultSet.getString("name"));
-                studentDTO.setCity(resultSet.getString("city"));
-                studentDTO.setLevel(resultSet.getString("level"));
-                studentDTO.setEmail(resultSet.getString("email"));
+            String id = req.getParameter("id");
+            DataProcess dataProcess = new DataProcess();
+
+            try(var writer = resp.getWriter())
+            {
+                var studentDTO = dataProcess.getStudentDTO(id, connection);
+                resp.setContentType("application/json");
+                var json = JsonbBuilder.create();
+                json.toJson(studentDTO, writer);
             }
-            resp.setContentType("application/json");
-            var json = JsonbBuilder.create();
-            json.toJson(studentDTO, resp.getWriter());
-        } catch (SQLException e) {
+            catch (SQLException e) {
             e.printStackTrace();
         }
 
@@ -70,54 +76,21 @@ public class StudentController extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         //Todo : save student
-        if(!req.getContentType().toLowerCase().startsWith("application/json")||req.getContentType() == null){
+        if(!req.getContentType().toLowerCase().startsWith("application/json")||req.getContentType() == null) {
             resp.sendError(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
         }
-        //Single Bind Object JSON
-        /*String id = UtilProcess.generateId();
-        Jsonb jsonb = JsonbBuilder.create();
-        StudentDTO studentDTO = jsonb.fromJson(req.getReader(), StudentDTO.class);
-        studentDTO.setId(id);
-        System.out.println(studentDTO);
-*/
-        /* BufferedReader reader = req.getReader();
-        PrintWriter writer = resp.getWriter();
-        StringBuilder sb = new StringBuilder();
-        reader.lines().forEach(line -> sb.append(line+"\n"));
-        System.out.println(sb.toString());
-        writer.print(sb.toString());
-        writer.close();*/
-        //jason manipulate with Parson
+        try(var writer = resp.getWriter())
+        {
+            Jsonb jsonb = JsonbBuilder.create();
+            StudentDTO sdto = jsonb.fromJson(req.getReader(), StudentDTO.class);
+            DataProcess dataProcess = new DataProcess();
+            sdto.setId(UtilProcess.generateId());
 
-       /* JsonReader reader = Json.createReader(req.getReader());
-        JsonObject jsonObject = reader.readObject();
-        System.out.println(jsonObject.getString("name"));*/
+            writer.write(dataProcess.saveStudentDTO(sdto, connection));
+            resp.setStatus(HttpServletResponse.SC_CREATED);
 
-        /*JsonReader reader2 = Json.createReader(req.getReader());
-        JsonArray array = reader2.readArray();
-        for (int i = 0; i < array.size(); i++) {
-            System.out.println(array.getJsonObject(i).getString("name"));
-        }*/
-        // JSON array with bind function
-
-        /*Jsonb jsonb = JsonbBuilder.create();
-        List<StudentDTO> students = jsonb.fromJson(req.getReader(),new ArrayList<StudentDTO>(){}.getClass().getGenericSuperclass());
-        students.forEach(System.out::println);*/
-
-        Jsonb jsonb = JsonbBuilder.create();
-        StudentDTO sdto = jsonb.fromJson(req.getReader(), StudentDTO.class);
-        try{
-            var preparedStatement = connection.prepareStatement(SAVE_STUDENT);
-
-            preparedStatement.setString(1, sdto.getId());
-            preparedStatement.setString(2, sdto.getName());
-            preparedStatement.setString(3,sdto.getCity());
-            preparedStatement.setString(4,sdto.getLevel());
-            preparedStatement.setString(5, sdto.getEmail());
-            preparedStatement.executeUpdate();
-            preparedStatement.close();
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
 
     }
@@ -128,22 +101,22 @@ public class StudentController extends HttpServlet {
         if(!req.getContentType().toLowerCase().startsWith("application/json")||req.getContentType() == null){
             resp.sendError(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
         }
+        DataProcess dataProcess = new DataProcess();
         try(var writer = resp.getWriter()) {
-            var pstm = this.connection.prepareStatement(DELETE_STUDENT);
+
             var id = req.getParameter("id");
-            pstm.setString(1,id);
-            int i = pstm.executeUpdate();
-            if (i !=0){
-                writer.write("Delete Successful");
-                resp.setStatus(HttpServletResponse.SC_NO_CONTENT);
-            }else{
-                writer.write("Delete failed");
-                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            boolean b = dataProcess.deleteStudentDTO(id, connection);
+
+            if (b) {
+                writer.write("Student Deleted Successfully");
+            }
+            else {
+                writer.write("Student Not Deleted ");
             }
         } catch (SQLException e) {
             e.printStackTrace();
+            
         }
-
     }
 
     @Override
@@ -152,24 +125,20 @@ public class StudentController extends HttpServlet {
         if(!req.getContentType().toLowerCase().startsWith("application/json")||req.getContentType() == null){
             resp.sendError(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
         }
+        DataProcess dataProcess = new DataProcess();
         try(var writer = resp.getWriter()){
-            var pstm = this.connection.prepareStatement(UPDATE_STUDENT);
+
             var id = req.getParameter("id");
             Jsonb jsonb = JsonbBuilder.create();
             var updatedStudent = jsonb.fromJson(req.getReader(),StudentDTO.class);
-            pstm.setString(1,updatedStudent.getName());
-            pstm.setString(2,updatedStudent.getCity());
-            pstm.setString(3,updatedStudent.getLevel());
-            pstm.setString(4, updatedStudent.getEmail());
-            pstm.setString(5,id);
-            if (pstm.executeUpdate() != 0){
+            boolean b = dataProcess.updateStudentDTO(updatedStudent, id, connection);
+            if (b){
                 writer.write("Student Updated");
                 resp.setStatus(HttpServletResponse.SC_NO_CONTENT);
             }else{
                 writer.write("Update Failed");
                 resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }
-            pstm.close();
         } catch (SQLException e) {
             e.printStackTrace();
         }

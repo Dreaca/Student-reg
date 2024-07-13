@@ -1,9 +1,5 @@
 package org.example.studentreg.controllers;
 
-import jakarta.json.Json;
-import jakarta.json.JsonArray;
-import jakarta.json.JsonObject;
-import jakarta.json.JsonReader;
 import jakarta.json.bind.Jsonb;
 import jakarta.json.bind.JsonbBuilder;
 import jakarta.servlet.ServletException;
@@ -12,20 +8,18 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.example.studentreg.dto.StudentDTO;
+import org.example.studentreg.util.UtilProcess;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 
 @WebServlet(urlPatterns = "/student")
 public class StudentController extends HttpServlet {
     Connection connection;
     static String SAVE_STUDENT = "INSERT INTO student(id,name,city,level,email) VALUES (?,?,?,?,?)";
     static String GET_STUDENT = "SELECT * FROM student WHERE id = ?";
+    static String DELETE_STUDENT = "DELETE FROM student WHERE id = ?";
+    static String UPDATE_STUDENT = "UPDATE student SET name = ?,city = ?,level = ?,email = ? WHERE id = ?";
 
     @Override
     public void init() {
@@ -44,6 +38,10 @@ public class StudentController extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+
+        if(!req.getContentType().toLowerCase().startsWith("application/json")||req.getContentType() == null){
+            resp.sendError(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
+        }
         //Todo : get student
         var studentDTO = new StudentDTO();
         try(var writer = resp.getWriter()){
@@ -76,13 +74,12 @@ public class StudentController extends HttpServlet {
             resp.sendError(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
         }
         //Single Bind Object JSON
-        /*String id = UUID.randomUUID().toString();
+        /*String id = UtilProcess.generateId();
         Jsonb jsonb = JsonbBuilder.create();
         StudentDTO studentDTO = jsonb.fromJson(req.getReader(), StudentDTO.class);
         studentDTO.setId(id);
         System.out.println(studentDTO);
 */
-
         /* BufferedReader reader = req.getReader();
         PrintWriter writer = resp.getWriter();
         StringBuilder sb = new StringBuilder();
@@ -128,12 +125,54 @@ public class StudentController extends HttpServlet {
     @Override
     protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         //Todo : delete student
+        if(!req.getContentType().toLowerCase().startsWith("application/json")||req.getContentType() == null){
+            resp.sendError(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
+        }
+        try(var writer = resp.getWriter()) {
+            var pstm = this.connection.prepareStatement(DELETE_STUDENT);
+            var id = req.getParameter("id");
+            pstm.setString(1,id);
+            int i = pstm.executeUpdate();
+            if (i !=0){
+                writer.write("Delete Successful");
+                resp.setStatus(HttpServletResponse.SC_NO_CONTENT);
+            }else{
+                writer.write("Delete failed");
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
 
     }
 
     @Override
     protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         //Todo : update student
+        if(!req.getContentType().toLowerCase().startsWith("application/json")||req.getContentType() == null){
+            resp.sendError(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
+        }
+        try(var writer = resp.getWriter()){
+            var pstm = this.connection.prepareStatement(UPDATE_STUDENT);
+            var id = req.getParameter("id");
+            Jsonb jsonb = JsonbBuilder.create();
+            var updatedStudent = jsonb.fromJson(req.getReader(),StudentDTO.class);
+            pstm.setString(1,updatedStudent.getName());
+            pstm.setString(2,updatedStudent.getCity());
+            pstm.setString(3,updatedStudent.getLevel());
+            pstm.setString(4, updatedStudent.getEmail());
+            pstm.setString(5,id);
+            if (pstm.executeUpdate() != 0){
+                writer.write("Student Updated");
+                resp.setStatus(HttpServletResponse.SC_NO_CONTENT);
+            }else{
+                writer.write("Update Failed");
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            }
+            pstm.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public StudentController() {

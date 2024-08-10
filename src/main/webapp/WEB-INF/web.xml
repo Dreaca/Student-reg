@@ -23,4 +23,10 @@
         <param-name>origin</param-name>
         <param-value>http://localhost:63342</param-value>
     </context-param>
+    <resource-ref>
+        <description>DB Connection</description>
+        <res-ref-name>jdbc/studentregdb</res-ref-name>
+        <res-type>javax.sql.DataSource</res-type>
+        <res-auth>Container</res-auth>
+    </resource-ref>
 </web-app>

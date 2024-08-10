@@ -11,6 +11,9 @@ import org.example.studentreg.dto.StudentDTO;
 import org.example.studentreg.persistence.StudentDataProcess;
 import org.example.studentreg.util.UtilProcess;
 
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+import javax.sql.DataSource;
 import java.io.IOException;
 import java.sql.*;
 
@@ -30,19 +33,12 @@ public class StudentController extends HttpServlet {
     @Override
     public void init() {
         try {
-            var driVerClass = getServletContext().getInitParameter("driver");
-            var dbURL = getServletContext().getInitParameter("dbURL");
-            var user = getServletContext().getInitParameter("dbUsername");
-            var password = getServletContext().getInitParameter("dbPassword");
-            /*var driVerClass = getServletConfig().getInitParameter("driver");
-            var dbURL = getServletConfig().getInitParameter("dbURL");
-            var user = getServletConfig().getInitParameter("dbUsername");
-            var password = getServletConfig().getInitParameter("dbPassword");*/
 
-            Class.forName(driVerClass);
-            this.connection = DriverManager.getConnection(dbURL, user, password);
+            var ctx = new InitialContext();
+            DataSource pool = (DataSource) ctx.lookup("java:comp/env/jdbc/studentregdb");
+            this.connection = pool.getConnection();
 
-        }catch (ClassNotFoundException | SQLException e) {
+        }catch (SQLException | NamingException e) {
             e.printStackTrace();
         }
     }

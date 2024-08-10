@@ -1,13 +1,12 @@
-package org.example.studentreg.persistence.implementation;
+package org.example.studentreg.persistence;
 import org.example.studentreg.dto.StudentDTO;
-import org.example.studentreg.persistence.Data;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class DataProcess implements Data {
+public final class StudentDataProcess implements StudentData {
     static String SAVE_STUDENT = "INSERT INTO student(id,name,city,level,email) VALUES (?,?,?,?,?)";
     static String GET_STUDENT = "SELECT * FROM student WHERE id = ?";
     static String DELETE_STUDENT = "DELETE FROM student WHERE id = ?";
@@ -67,14 +66,7 @@ public class DataProcess implements Data {
         try{
             var pstm = connection.prepareStatement(DELETE_STUDENT);
             pstm.setString(1,studentId);
-            int i = pstm.executeUpdate();
-
-            if(i>0){
-                return true;
-            }
-            else {
-                return false;
-            }
+            return pstm.executeUpdate()!=0;
         }catch (SQLException e){
             throw e;
         }
@@ -91,10 +83,7 @@ public class DataProcess implements Data {
             pstm.setString(4, studentDTO.getEmail());
             pstm.setString(5,studentId);
 
-            if (pstm.executeUpdate()!=0){
-                return true;
-            }
-            else return false;
+            return (pstm.executeUpdate()!=0);
         }
         catch (SQLException e){
             throw e;

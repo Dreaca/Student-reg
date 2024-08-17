@@ -10,6 +10,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.example.studentreg.dto.StudentDTO;
 import org.example.studentreg.persistence.StudentDataProcess;
 import org.example.studentreg.util.UtilProcess;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -18,28 +20,26 @@ import java.io.IOException;
 import java.sql.*;
 
 @WebServlet(urlPatterns = "/student"
-/*,
-    initParams = {
-    @WebInitParam(name = "driver", value = "com.mysql.cj.jdbc.Driver"),
-    @WebInitParam(name = "dbURL", value = "jdbc:mysql://localhost:3306/studentregdb"),
-    @WebInitParam(name = "dbUsername", value = "root"),
-    @WebInitParam(name = "dbPassword", value = "Ijse@1234")
-}*/
-)
+,loadOnStartup = 2)
 public class StudentController extends HttpServlet {
+    private static Logger logger = LoggerFactory.getLogger(StudentController.class);
     Connection connection;
 
 
     @Override
     public void init() {
+
+        logger.info("StudentController Class Initialized");
+
         try {
 
             var ctx = new InitialContext();
             DataSource pool = (DataSource) ctx.lookup("java:comp/env/jdbc/studentregdb");
+
             this.connection = pool.getConnection();
 
-        }catch (SQLException | NamingException e) {
-            e.printStackTrace();
+        }catch (Exception e) {
+            logger.error("INIT Failed with ",e.getMessage());
         }
     }
 
@@ -53,6 +53,7 @@ public class StudentController extends HttpServlet {
 
             try(var writer = resp.getWriter())
             {
+
                 var studentDTO = studentDataProcess.getStudentDTO(id, connection);
                 resp.setContentType("application/json");
                 var json = JsonbBuilder.create();
@@ -68,6 +69,7 @@ public class StudentController extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         //Todo : save student
+        logger.debug("DOPos tMethod");
         if(!req.getContentType().toLowerCase().startsWith("application/json")||req.getContentType() == null) {
             resp.sendError(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
         }

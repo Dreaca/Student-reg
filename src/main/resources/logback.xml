@@ -1,0 +1,24 @@
+<configuration>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>
+                %d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} -%kvp- %msg%n
+            </pattern>
+        </encoder>
+    </appender>
+    <appender name="File" class="ch.qos.logback.core.FileAppender">
+        <file>
+            C:\Users\lapcity\Desktop\Academic GDSE67\Student-Reg\app.log
+        </file>
+        <encoder>
+            <pattern>
+                %d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} -%kvp- %msg%n
+            </pattern>
+        </encoder>
+    </appender>
+    <root level="debug">
+        <appender-ref ref="STDOUT" />
+        <appender-ref ref="File" />
+    </root>
+</configuration>
